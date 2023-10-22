@@ -124,16 +124,13 @@ class Reader:
         img_bytes = self.stream_reader.stdout.read(self.width * self.height * 3)  # 3 bytes for one pixel
         if not img_bytes:
             return None
-        rgb_image = cv2.cvtColor(np.frombuffer(img_bytes, np.uint8).reshape([self.height, self.width, 3]), cv2.COLOR_BGR2RGB)
-        
-        img = Image.fromarray(rgb_image)
+        img = Image.fromarray(np.frombuffer(img_bytes, np.uint8).reshape([self.height, self.width, 3]))
         return img
 
     def get_frame_from_list(self):
         if self.idx >= self.nb_frames:
             return None
-        rgb_image = cv2.cvtColor(cv2.imread(self.paths[self.idx]))
-        img = Image.fromarray(rgb_image)
+        img = Image.fromarray(cv2.imread(self.paths[self.idx]))
         self.idx += 1
         return img
 
@@ -159,7 +156,7 @@ class Writer:
 
         if audio is not None:
             self.stream_writer = (
-                ffmpeg.input('pipe:', format='rawvideo', pix_fmt='bgr24', s=f'{out_width}x{out_height}',
+                ffmpeg.input('pipe:', format='rawvideo', pix_fmt='rgb24', s=f'{out_width}x{out_height}',
                              framerate=fps).output(
                                  audio,
                                  video_save_path,
@@ -170,14 +167,14 @@ class Writer:
                                      pipe_stdin=True, pipe_stdout=True, cmd=args.ffmpeg_bin))
         else:
             self.stream_writer = (
-                ffmpeg.input('pipe:', format='rawvideo', pix_fmt='bgr24', s=f'{out_width}x{out_height}',
+                ffmpeg.input('pipe:', format='rawvideo', pix_fmt='rgb24', s=f'{out_width}x{out_height}',
                              framerate=fps).output(
                                  video_save_path, pix_fmt='yuv420p', vcodec='hevc_nvenc',
                                  loglevel='error').overwrite_output().run_async(
                                      pipe_stdin=True, pipe_stdout=True, cmd=args.ffmpeg_bin))
 
     def write_frame(self, frame):
-        numpy_frame = cv2.cvtColor(np.array(frame), cv2.COLOR_RGB2BGR)
+        numpy_frame = np.array(frame)
         frame = numpy_frame.astype(np.uint8).tobytes()
         self.stream_writer.stdin.write(frame)
 
@@ -189,7 +186,7 @@ def run(args):
 
     args.video_name = osp.splitext(os.path.basename(args.input))[0]
     video_save_path = osp.join(args.output, f'{args.video_name}_{args.suffix}.mp4')
-    img_save_path = osp.join(args.output, f'{args.video_name}_{args.suffix}.jpg')
+    # img_save_path = osp.join(args.output, f'{args.video_name}_{args.suffix}.jpg')
 
     reader = Reader(args)
     audio = reader.get_audio()
